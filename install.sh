@@ -11,7 +11,7 @@ echo "======================================"
 VM_NAME="Win11VM"
 VM_DIR="/var/vms/$VM_NAME"
 ISO_DIR="/var/isos"
-ISO_FILE="$ISO_DIR/win11-auto.iso"
+ISO_FILE="$ISO_DIR/Win11.iso"
 
 # -----------------------------
 # UPDATE SYSTEM
@@ -22,7 +22,6 @@ dnf -y update
 # BASE PACKAGES
 # -----------------------------
 dnf install -y epel-release wget curl git nano firewalld unzip net-tools bzip2
-
 systemctl enable --now firewalld
 
 # -----------------------------
@@ -67,29 +66,27 @@ dnf install -y VirtualBox-7.0
 /sbin/vboxconfig || true
 
 # -----------------------------
-# WINDOWS ISO
+# WINDOWS 11 ISO AUTO-DOWNLOAD
 # -----------------------------
 mkdir -p $ISO_DIR
 if [ ! -f "$ISO_FILE" ]; then
-    echo "[!] Place your prebuilt auto ISO at $ISO_FILE"
+  echo "[✓] Downloading Windows 11 ISO..."
+  wget -O "$ISO_FILE" "https://software-download.microsoft.com/db/Win11_22H2_English_x64.iso?t=YOUR_TEMP_LINK_HERE"
+  echo "[✓] Download complete: $ISO_FILE"
 fi
 
 # -----------------------------
 # CREATE VM
 # -----------------------------
-if [ -f "$ISO_FILE" ]; then
-  mkdir -p $VM_DIR
-  VBoxManage createvm --name "$VM_NAME" --ostype Windows11_64 --register
-  VBoxManage modifyvm "$VM_NAME" --memory 8192 --cpus 4 --nic1 nat --firmware efi
-  VBoxManage createmedium disk --filename "$VM_DIR/$VM_NAME.vdi" --size 102400
-  VBoxManage storagectl "$VM_NAME" --name "SATA" --add sata
-  VBoxManage storageattach "$VM_NAME" --storagectl "SATA" --port 0 --device 0 --type hdd --medium "$VM_DIR/$VM_NAME.vdi"
-  VBoxManage storagectl "$VM_NAME" --name "IDE" --add ide
-  VBoxManage storageattach "$VM_NAME" --storagectl "IDE" --port 0 --device 0 --type dvddrive --medium "$ISO_FILE"
-  VBoxManage startvm "$VM_NAME" --type headless
-else
-  echo "[!] VM skipped (ISO missing)"
-fi
+mkdir -p $VM_DIR
+VBoxManage createvm --name "$VM_NAME" --ostype Windows11_64 --register
+VBoxManage modifyvm "$VM_NAME" --memory 8192 --cpus 4 --nic1 nat --firmware efi
+VBoxManage createmedium disk --filename "$VM_DIR/$VM_NAME.vdi" --size 102400
+VBoxManage storagectl "$VM_NAME" --name "SATA" --add sata
+VBoxManage storageattach "$VM_NAME" --storagectl "SATA" --port 0 --device 0 --type hdd --medium "$VM_DIR/$VM_NAME.vdi"
+VBoxManage storagectl "$VM_NAME" --name "IDE" --add ide
+VBoxManage storageattach "$VM_NAME" --storagectl "IDE" --port 0 --device 0 --type dvddrive --medium "$ISO_FILE"
+VBoxManage startvm "$VM_NAME" --type headless
 
 # -----------------------------
 # DATABASE
@@ -116,12 +113,11 @@ cp -r dashboard/* /opt/lampp/htdocs/dashboard/
 echo "apache ALL=(ALL) NOPASSWD: /opt/lampp/lampp" >> /etc/sudoers
 
 # -----------------------------
-# FIREWALL FINALIZE
+# FIREWALL RELOAD
 # -----------------------------
 firewall-cmd --reload
 
 IP=$(hostname -I | awk '{print $1}')
-
 echo "=================================="
 echo " INSTALL COMPLETE "
 echo " Dashboard: http://$IP/dashboard"
